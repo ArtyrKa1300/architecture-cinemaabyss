@@ -1,71 +1,65 @@
 name: API Tests
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+  workflow_call:
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to run tests against'
-        required: true
-        default: 'docker'
-        type: choice
-        options:
-          - local
-          - docker
-      test_folder:
-        description: 'Test folder to run (leave empty for all)'
-        required: false
-        type: string
+  pull_request:
+    branches: [main, cinema]
 
 jobs:
   api-tests:
-    name: Run API Tests
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Docker Compose
-        run: |
-          docker compose --version
-      
-      - name: Start services with Docker Compose
-        run: |
-          docker compose up -d
-          # Wait for services to be ready
-          echo "Waiting for services to be ready..."
-          sleep 120
-      
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: '22'
+          cache: npm
           cache-dependency-path: tests/postman/package-lock.json
-      
-      - name: Install Newman and dependencies
+      - name: Start services
+        run: docker compose up --build -d
+      - name: Wait for HTTP services and Kafka
+        shell: bash
+        run: |
+          for url in http://127.0.0.1:8080/health http://127.0.0.1:8081/api/movies/health http://127.0.0.1:8082/api/events/health http://127.0.0.1:8000/health; do
+            ready=false
+            for attempt in $(seq 1 60); do
+              if curl --fail --silent --max-time 3 "$url" > /dev/null; then
+                ready=true
+                break
+              fi
+              sleep 2
+            done
+            if [ "$ready" != true ]; then
+              echo "Service unavailable: $url"
+              exit 1
+            fi
+          done
+          ready=false
+          for attempt in $(seq 1 60); do
+            if docker compose exec -T events-service python -c "from app import get_producer; get_producer().partitions_for('movie-events')" ; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          test "$ready" = true
+      - name: Install test dependencies
         working-directory: tests/postman
-        run: npm install
-      
+        run: npm ci
       - name: Run API tests
         working-directory: tests/postman
-        run: |
-
-          docker compose up -d
-          # Wait for services to be ready
-          echo "Waiting for services to be ready..."
-          sleep 15
-          # Build the Docker image
-          docker build -t cinemaabyss-api-tests .
-          
-          # Run the tests in Docker
-          docker run --network=cinemaabyss-network -v "$(pwd)/reports:/app/reports" cinemaabyss-api-tests
-        
-      
+        run: npm run test:local -- --reporters cli,junit --timeout 30000
+      - name: Save reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-reports
+          path: tests/postman/reports/
+          if-no-files-found: ignore
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --tail=100
       - name: Stop services
         if: always()
         run: docker compose down
