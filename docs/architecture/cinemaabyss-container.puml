@@ -1,0 +1,119 @@
+@startuml
+
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Контейнерная диаграмма To-Be системы «Кинобездна»
+
+LAYOUT_LEFT_RIGHT()
+
+Person(user, "Пользователь", "Смотрит фильмы, управляет подпиской, оценивает контент")
+
+System_Ext(recommendationSystem, "Рекомендательная система", "Формирует персональные рекомендации")
+System_Ext(paymentProvider, "Платёжная система", "Проводит платежи")
+System_Ext(contentProviders, "Поставщики контента", "Предоставляют видеоконтент и метаданные")
+System_Ext(partnerSystems, "Партнёрские системы", "Маркетплейсы и программы лояльности")
+
+System_Boundary(cinemaAbyss, "Кинобездна — Kubernetes") {
+    Container(webApp, "Web-приложение", "Web application", "Интерфейс для браузера")
+    Container(mobileApp, "Мобильное приложение", "Mobile application", "Интерфейс для мобильных устройств")
+    Container(tvApp, "Smart TV приложение", "TV application", "Интерфейс для телевизоров")
+
+    Container(apiGateway, "API Gateway / Migration Proxy", "Reverse proxy", "Единая точка входа; маршрутизация и постепенное переключение трафика по feature flag")
+
+    Container(webBff, "Web BFF", "Backend service", "Подготавливает данные для web-клиента")
+    Container(mobileBff, "Mobile BFF", "Backend service", "Подготавливает компактные ответы для мобильного клиента")
+    Container(tvBff, "Smart TV BFF", "Backend service", "Подготавливает данные для Smart TV")
+
+    Container(userService, "Сервис пользователей", "Go service", "Пользователи, аутентификация, профили и права доступа")
+    ContainerDb(userDb, "User DB", "PostgreSQL", "Пользователи, учётные данные и профили")
+
+    Container(movieService, "Сервис фильмов", "Go service", "Метаданные фильмов, жанры и каталог")
+    ContainerDb(movieDb, "Movies DB", "PostgreSQL", "Фильмы, жанры и метаданные")
+
+    Container(activityService, "Сервис пользовательской активности", "Backend service", "Оценки, отзывы, избранное и история просмотров")
+    ContainerDb(activityDb, "Activity DB", "PostgreSQL", "Оценки, отзывы, избранное и просмотры")
+
+    Container(subscriptionService, "Сервис подписок", "Backend service", "Тарифы, подписки и проверка права на просмотр")
+    ContainerDb(subscriptionDb, "Subscription DB", "PostgreSQL", "Подписки и тарифные планы")
+
+    Container(paymentService, "Сервис платежей", "Backend service", "Создание платежей и обработка их статусов")
+    ContainerDb(paymentDb, "Payment DB", "PostgreSQL", "Платежи и транзакции")
+
+    Container(playbackService, "Сервис воспроизведения", "Backend service", "Выдаёт ссылки на видеопотоки и управляет сессиями просмотра")
+    ContainerDb(playbackDb, "Playback DB", "PostgreSQL", "Сессии воспроизведения и права на контент")
+
+    Container(recommendationAdapter, "Recommendation ACL", "Backend service", "Изолирует систему от контракта внешней рекомендательной системы")
+    Container(integrationService, "Сервис интеграций", "Backend service", "Интеграции с поставщиками контента, маркетплейсами и программами лояльности")
+
+    Container(eventsService, "Сервис событий", "Producer / Consumer", "Принимает, публикует и обрабатывает события User, Payment и Movie")
+    ContainerQueue(kafka, "Kafka", "Event broker", "Асинхронная доставка доменных событий")
+
+    Container(monolith, "Legacy-монолит", "Go application", "Временно обслуживает ещё не перенесённую функциональность")
+    ContainerDb(legacyDb, "Legacy DB", "PostgreSQL", "Данные, которые ещё не перенесены из монолита")
+}
+
+Rel(user, webApp, "Использует", "HTTPS")
+Rel(user, mobileApp, "Использует", "HTTPS")
+Rel(user, tvApp, "Использует", "HTTPS")
+
+Rel(webApp, apiGateway, "Отправляет запросы", "HTTPS/JSON")
+Rel(mobileApp, apiGateway, "Отправляет запросы", "HTTPS/JSON")
+Rel(tvApp, apiGateway, "Отправляет запросы", "HTTPS/JSON")
+
+Rel(apiGateway, webBff, "Маршрутизирует web-запросы", "REST")
+Rel(apiGateway, mobileBff, "Маршрутизирует mobile-запросы", "REST")
+Rel(apiGateway, tvBff, "Маршрутизирует TV-запросы", "REST")
+Rel(apiGateway, eventsService, "Маршрутизирует /api/events", "REST")
+Rel(apiGateway, monolith, "Направляет ещё не мигрировавший трафик", "REST + feature flag")
+Rel(apiGateway, movieService, "Постепенно переключает /api/movies", "REST + migration percent")
+
+Rel(webBff, userService, "Запрашивает пользователя", "REST")
+Rel(webBff, movieService, "Запрашивает каталог", "REST")
+Rel(webBff, activityService, "Работает с активностью", "REST")
+Rel(webBff, subscriptionService, "Управляет подпиской", "REST")
+Rel(webBff, paymentService, "Инициирует оплату", "REST")
+Rel(webBff, playbackService, "Запрашивает воспроизведение", "REST")
+Rel(webBff, recommendationAdapter, "Запрашивает рекомендации", "REST")
+
+Rel(mobileBff, userService, "Запрашивает пользователя", "REST")
+Rel(mobileBff, movieService, "Запрашивает каталог", "REST")
+Rel(mobileBff, activityService, "Работает с активностью", "REST")
+Rel(mobileBff, subscriptionService, "Проверяет подписку", "REST")
+Rel(mobileBff, playbackService, "Запрашивает воспроизведение", "REST")
+Rel(mobileBff, recommendationAdapter, "Запрашивает рекомендации", "REST")
+
+Rel(tvBff, userService, "Запрашивает пользователя", "REST")
+Rel(tvBff, movieService, "Запрашивает каталог", "REST")
+Rel(tvBff, activityService, "Передаёт просмотры и оценки", "REST")
+Rel(tvBff, subscriptionService, "Проверяет подписку", "REST")
+Rel(tvBff, playbackService, "Запрашивает воспроизведение", "REST")
+Rel(tvBff, recommendationAdapter, "Запрашивает рекомендации", "REST")
+
+Rel(userService, userDb, "Читает и сохраняет", "SQL")
+Rel(movieService, movieDb, "Читает и сохраняет", "SQL")
+Rel(activityService, activityDb, "Читает и сохраняет", "SQL")
+Rel(subscriptionService, subscriptionDb, "Читает и сохраняет", "SQL")
+Rel(paymentService, paymentDb, "Читает и сохраняет", "SQL")
+Rel(playbackService, playbackDb, "Читает и сохраняет", "SQL")
+Rel(monolith, legacyDb, "Использует во время миграции", "SQL")
+
+Rel(subscriptionService, paymentService, "Инициирует оплату подписки", "REST")
+Rel(playbackService, subscriptionService, "Проверяет право на просмотр", "REST")
+Rel(paymentService, paymentProvider, "Проводит платёж", "HTTPS")
+Rel(playbackService, contentProviders, "Получает видеопоток", "HTTPS")
+Rel(integrationService, contentProviders, "Синхронизирует метаданные", "HTTPS")
+Rel(integrationService, partnerSystems, "Обменивается данными", "HTTPS")
+Rel(recommendationAdapter, recommendationSystem, "Запрашивает рекомендации", "HTTPS")
+
+Rel(userService, kafka, "Публикует User events", "Kafka")
+Rel(movieService, kafka, "Публикует Movie events", "Kafka")
+Rel(activityService, kafka, "Публикует события просмотров и оценок", "Kafka")
+Rel(paymentService, kafka, "Публикует Payment events", "Kafka")
+Rel(eventsService, kafka, "Публикует тестовые события", "Kafka")
+Rel(kafka, eventsService, "Доставляет события для обработки", "Kafka")
+Rel(kafka, recommendationAdapter, "Доставляет события активности", "Kafka")
+Rel(kafka, integrationService, "Доставляет интеграционные события", "Kafka")
+
+SHOW_LEGEND()
+
+@enduml
