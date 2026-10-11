@@ -293,6 +293,14 @@ cat .docker/config.json | base64
 #### Шаг 3
 Добавьте сюда скриншота вывода при вызове https://cinemaabyss.example.com/api/movies и  скриншот вывода event-service после вызова тестов.
 
+Ответ на запрос `http://cinemaabyss.example.com/api/movies` через Ingress: `200 OK`, запрос направлен в `movies-service`.
+
+![Получение списка фильмов через Ingress и Proxy](docs/curl.png)
+
+Логи `events-service` после запуска тестов в Kubernetes: публикация и чтение событий из Kafka.
+
+![Логи сервиса событий в Kubernetes](docs/logs_events-service.png)
+
 
 # Задание 4
 Для простоты дальнейшего обновления и развертывания вам как архитектуру необходимо так же реализовать helm-чарты для прокси-сервиса и проверить работу 

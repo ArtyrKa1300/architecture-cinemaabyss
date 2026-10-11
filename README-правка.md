@@ -9,6 +9,14 @@
 - Архитектура, управляемая событиями, с использованием Kafka;
 - CI/CD Pipeline с GitHub Actions.
 
+## Результат CI/CD
+
+[Успешный запуск Docker Build and Push](https://github.com/ArtyrKa1300/architecture-cinemaabyss/actions/runs/38143036959).
+
+API-тесты прошли: 22 запроса и 42 проверки, без ошибок. Собраны и опубликованы в GHCR образы `monolith`, `movies-service`, `events-service` и `proxy-service`.
+
+![Успешное выполнение CI/CD в GitHub Actions](docs/tests_cicd.png)
+
 ## Компоненты
 
 ### Монолит
