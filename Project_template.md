@@ -61,21 +61,21 @@
 
 #### Результаты тестирования
 
-![Успешное выполнение Postman-тестов](docs/tests_report.png)
+![Успешное выполнение Postman-тестов](docs/2/tests_report.png)
 
 #### Состояние топиков Kafka
 
 **Movie events**
 
-![Топик movie-events в Kafka UI](docs/kafka_movie-events.png)
+![Топик movie-events в Kafka UI](docs/2/kafka_movie-events.png)
 
 **User events**
 
-![Топик user-events в Kafka UI](docs/kafka_user-events.png)
+![Топик user-events в Kafka UI](docs/2/kafka_user-events.png)
 
 **Payment events**
 
-![Топик payment-events в Kafka UI](docs/kafka_payment-events.png)
+![Топик payment-events в Kafka UI](docs/2/kafka_payment-events.png)
 
 # Задание 3
 
@@ -295,11 +295,11 @@ cat .docker/config.json | base64
 
 Ответ на запрос `http://cinemaabyss.example.com/api/movies` через Ingress: `200 OK`, запрос направлен в `movies-service`.
 
-![Получение списка фильмов через Ingress и Proxy](docs/curl.png)
+![Получение списка фильмов через Ingress и Proxy](docs/3/curl.png)
 
 Логи `events-service` после запуска тестов в Kubernetes: публикация и чтение событий из Kafka.
 
-![Логи сервиса событий в Kubernetes](docs/logs_events-service.png)
+![Логи сервиса событий в Kubernetes](docs/3/logs_events-service.png)
 
 
 # Задание 4
@@ -375,6 +375,20 @@ minikube tunnel
 Потом вызовите 
 https://cinemaabyss.example.com/api/movies
 и приложите скриншот развертывания helm и вывода https://cinemaabyss.example.com/api/movies
+
+### Результаты установки через Helm
+
+Release `cinemaabyss` имеет статус `deployed`.
+
+![Успешная установка Helm release](docs/4/helm_list.png)
+
+Все семь подов находятся в состоянии `Running` и готовы (`1/1`).
+
+![Состояние подов после установки через Helm](docs/4/get_pods.png)
+
+Запрос `http://cinemaabyss.example.com/api/movies` возвращает `200 OK`. Заголовок `X-CinemaAbyss-Upstream: movies-service` подтверждает маршрутизацию в микросервис фильмов.
+
+![Получение списка фильмов после установки через Helm](docs/4/curl.png)
 
 ## Удаляем все
 

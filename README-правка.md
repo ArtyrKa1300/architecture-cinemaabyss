@@ -15,7 +15,7 @@
 
 API-тесты прошли: 22 запроса и 42 проверки, без ошибок. Собраны и опубликованы в GHCR образы `monolith`, `movies-service`, `events-service` и `proxy-service`.
 
-![Успешное выполнение CI/CD в GitHub Actions](docs/tests_cicd.png)
+![Успешное выполнение CI/CD в GitHub Actions](docs/3/tests_cicd.png)
 
 ## Компоненты
 
